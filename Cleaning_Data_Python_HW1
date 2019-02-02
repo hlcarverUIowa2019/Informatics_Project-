@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jan 28 15:57:40 2019
+
+@author: huntercarver
+"""
+
+import pandas as PD
+from sqlalchemy import create_engine
+
+#This function reads in the Excel file first skipping 
+#Meta data at the begining and end and establishing the header and index_col
+data = PD.read_excel('tab-a-1.xls',
+                     skiprows = 4,
+                     header = [0,1,2],
+                     na_values = '(NA)',
+                     skipfooter = 12,
+                     index_col = [0]
+                     )
+
+
+
+#Drops all empty rows
+
+data.dropna(how='all', inplace=True)
+
+
+#stacks the lowest layer on to the 2nd lowest layer in the header and then that onto the top headser
+#In this case differt counties headers and sub division into row data rather than being columns
+data = data.stack([0,1,2]).reset_index()
+
+"""
+for row in data:
+    for word in row:
+        if data.loc[row,word] == 'Unnamed: 9_level_1':
+            print ('yes')
+"""
+
+
+#renaming columns for better naming scheme
+data.rename(columns = { data.columns[0] : 'Years',
+                       data.columns[1] : 'Type of residence in the United States',
+                       data.columns[2] : 'Different or Same County',
+                       data.columns[3] : 'Different or Same State',
+                       data.columns[4] : 'total',
+                       }, inplace = True)
+
+
+
+
+#Bug, Trying to find out to iterate over individual data and change some input
+#into other strings, Wont play nice because data is a data frame, can iterate but
+#cant change the value
+"""
+for i, row in data.iterrows():
+    if row['Different County or Abroad'] == ( 'Unnamed: 9_level_1'):
+        row['Different County or Abroad'] = 'Abroad'
+    if row ['Same or Different State'] ==  ('Unnamed: 9_level_2'):
+        row ['Same or Different State'] = 'Abroad'
+    if row ['Movers from abroad'] == ('null'):
+       row ['Movers from abroad'] = 'Moved In Country' 
+    print (row)
+"""
+"""
+data.str.replace('Unnamed: 9_level_1', 'Abroad', -1 case = False)
+"""
+
+#saving the excel file 
+
+data.to_excel(excel_writer='test13.xls',
+sheet_name = 'mobility_data',
+na_rep='null',
+index = False)
+
+#database connection
+sqlite = create_engine('sqlite:///MobilityData')
+
+#export data to database, will replace exsisting tables
+data.to_sql('Mobility',
+            sqlite,
+            if_exists = 'replace',
+            index = False)
+
+sqlite.dispose()
+
